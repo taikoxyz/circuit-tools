@@ -1,9 +1,9 @@
 # circuit-tools
-A lightweit SDK for Halo2 frontend circuit.
+A lightweight SDK for Halo2 frontend circuit.
 ## Features
 ### Logic: Constraint Builder
 Leverage Rust's macro to construct conditional constraints based on execution branching. Build all constraints in on step with Halo2's gate.
-```
+```rust
 let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  None, None);
 
 meta.create_gate("Test", |meta| {
@@ -21,7 +21,7 @@ meta.create_gate("Test", |meta| {
 ```
 ### Data: Cell Manager
 Manage and allocate cells on demand based on user specified `CellType`. Decrease amount of columns space wasted, enable degree reduction and lookup automation.
-```
+```rust
 let mut cm = CellManager::new(5, 0);
 cm.add_columns(meta, &mut cb, TestCellType::StoragePhase1, 1, false, 1);
 cm.add_columns(meta, &mut cb, TestCellType::Lookup, 2, false, 1);
@@ -39,7 +39,7 @@ require!((a.expr(), b.expr()) =>> @TestCellType::Lookup);
 ```
 ### Memory: Dynamic Lookup
 Abstraction over using dynamic lookup to prove RW access in RAM. Stores to dynamic table to resemble WRITE and add lookups to represent READ. Lookup operation `(idx, r0, r1) => (rdx, w0, w1)` returns true if and only if the prover access the writen data at anticipated position correctly.
-```
+```rust
 let mut memory = Memory::new();
 memory.add_rw(meta, &mut cb.base, &mut state_cm, MyCellType::Mem1, 1);
 memory.add_rw(meta, &mut cb.base, &mut state_cm, MyCellType::Mem2, 1);
@@ -57,7 +57,7 @@ register1.load(cb, &[a0, b1]);
 ```
 ### Assignment: Cached Region
 Used to backtrack the intermediate cells queried in by Constrinat Builder during degree reduction. After `a * b * (c + d)` being split into `x = a * b` and `y = c + d`, the system need to account for the assignment of intermediate cells `x` and `y` while the prover only need to assign `a, b, c, d` based on the execution trace. Hence, Cached Region iterates over all stored expressions and recursively find the prover's assignment to calculate the intermediate values.
-```
+```rust
 layouter.get_challenge(self.rand).map(|r| r1 = r);
 layouter.assign_region(
     || "Test", 
@@ -77,7 +77,7 @@ layouter.assign_region(
 ```
 ## Workflow
 Must specify cell type that implement trait `CellType` to satisfy the generic argument of `ConstraintBuilder<F, C: CellType>`. Can also declear a `TableType` to tag corresponding table for column-to-table lookups.
-```
+```rust
 pub enum TableTag {
     Fixed,
     Dyn
@@ -109,7 +109,7 @@ impl Default for TestCellType {
 }
 ```
 Initialize the Constraint Builder and Cell Manager with optional challenge that's used in RLC to conbime multi-columns lookups. The Cell Manager needs a max height and this is usually the height of your Halo2 gate; a offset is also needed to query cell from columns. Offset should be set to 0 in usual case. Load fixed table in to Constraint Builder with corresponding tag and initialized columns with the cell manager with `(cell_type: MyCellType, phase: u8, permuation: bool, num: usize)`.
-```
+```rust
 let mut cm = CellManager::new(5, 0);
 let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  Some(cm), Some(challenge));
 cb.load_table(meta, TableTag::Fixed, &fixed_table);
@@ -117,7 +117,7 @@ cm.add_columns(meta, &mut cb, TestCellType::StoragePhase1, 1, true, 1);
 cm.add_columns(meta, &mut cb, TestCellType::Lookup, 2, false, 1);
 ```
 In Halo2's gate API, use macro to config your circuit! Remember to call `build_constraints()` to return the constraints expression for the gate, finally calling `build_lookups(meta)` that turned into `meta.lookup_any(..) in Halo2.
-```
+```rust
 meta.create_gate("Test", |meta| {
     circuit!([meta, cb], {
         // ... circuit ...
